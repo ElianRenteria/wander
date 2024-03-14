@@ -1,4 +1,5 @@
 *.pyc
 key.json
 venv/
+.DS_Store
 ```
