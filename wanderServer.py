@@ -23,7 +23,7 @@ def handle_clients(conn, addr):
                 break
             else:
                 clients[conn]["data"] = data.decode("utf-8")
-            clients[conn] = time.time()
+                clients[conn]["time"] = time.time()
     except ConnectionResetError:
         print(f"Connnection reset by {addr}")
     finally:
@@ -34,11 +34,11 @@ def handle_clients(conn, addr):
 def update():
     while True:
         global clients
-        for client in clients:
+        for client, info in clients.items():
             try:
-                client.send(clients.encode("utf-8"))
-            except:
-                print("FAILED to send update to "+str(clients[client]["address"]))
+                client.send(info["data"].encode("utf-8"))
+            except Exception as e:
+                print(f"FAILED to send update to {info['address']}: {e}")
 
 
 def main():
@@ -62,14 +62,16 @@ def main():
                 selector.register(connection, selectors.EVENT_READ)
                 clients[connection] = {"connection":connection,"address":address,"time":time.time()}
                 client_thread = threading.Thread(target=handle_client,  args=(connection,address,))
+                client_thread.start()
             elif mask & selectors.EVENT_READ:
                 connection = key.fileobj
+                handle_client(connection, clients[connection]["address"])
 
 
 
         current_time = time.time()
-        for conneciton, last_activity_time in list(connection.items()):
-            if current_time - last_activity_time > TIMEOUT:
+        for conneciton, info in list(clients.items()):
+            if current_time - info["time"] > TIMEOUT:
                 print(f"Connection timed out")
                 selector.unregistor(connection)
                 del clients[connection]
@@ -77,7 +79,7 @@ def main():
 
 
 if __name__ == "__main__":
-    update_thread = threading.Thread(target=update, args=(,))
+    update_thread = threading.Thread(target=update)
     update_thread.start()
     main()
 
